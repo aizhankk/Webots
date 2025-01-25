@@ -9,7 +9,8 @@ class Nao(Robot):
     def __init__(self):
         Robot.__init__(self)
         self.findAndEnableDevices()  # Setup necessary robot devices
-        
+        self.loadMotionFiles()  # Load motion files (even though we're not using them right now)
+
         # Initialize Mediapipe for pose tracking (no hand tracking needed)
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
@@ -18,9 +19,19 @@ class Nao(Robot):
         self.mp_draw = mp.solutions.drawing_utils
         self.cap = cv2.VideoCapture(0)
 
+    def loadMotionFiles(self):
+        # Load motions for future use (although we aren't using them right now)
+        self.forwards = Motion('../../motions/Forwards50.motion')
+        self.backwards = Motion('../../motions/Backwards.motion')
+        self.sideStepLeft = Motion('../../motions/SideStepLeft.motion')
+        self.sideStepRight = Motion('../../motions/SideStepRight.motion')
+        self.turnLeft60 = Motion('../../motions/TurnLeft60.motion')
+        self.turnRight60 = Motion('../../motions/TurnRight60.motion')
+        self.taiChi = Motion('../../motions/TaiChi.motion')
+        self.wipeForhead = Motion('../../motions/WipeForehead.motion')
 
     def findAndEnableDevices(self):
-        self.timeStep = int(self.getBasicTimeStep())
+        self.timeStep = int(self.getBasicTimeStep()) 
 
         # Enable necessary devices (camera and keyboard for this task)
         self.cameraTop = self.getDevice("CameraTop")
@@ -31,6 +42,8 @@ class Nao(Robot):
         # Enable motors for shoulder control
         self.RShoulderPitch = self.getDevice("RShoulderPitch")
         self.LShoulderPitch = self.getDevice("LShoulderPitch")
+        self.RHipPitch = self.getDevice("RHipPitch")
+        self.LHipPitch = self.getDevice("LHipPitch")
         self.RElbowRoll = self.getDevice("RElbowRoll")
         self.LElbowRoll = self.getDevice("LElbowRoll")
         self.RElbowYaw = self.getDevice("RElbowYaw")
@@ -60,24 +73,11 @@ class Nao(Robot):
         # Enable motors for head control
         self.HeadYaw = self.getDevice("HeadYaw")  # Horizontal head rotation
         self.HeadPitch = self.getDevice("HeadPitch")  # Vertical head rotation
-        
-        self.LAnklePitch = self.getDevice("LAnklePitch")
-        self.RAnklePitch = self.getDevice("RAnklePitch")
-        self.LAnkleRoll = self.getDevice("LAnkleRoll")
-        self.RAnkleRoll = self.getDevice("RAnkleRoll")
-        self.LHipPitch = self.getDevice("LHipPitch")
-        self.RHipPitch = self.getDevice("RHipPitch")
-        self.LHipRoll = self.getDevice("LHipRoll")
-        self.RHipRoll = self.getDevice("RHipRoll")
-        self.LHipYawPitch = self.getDevice("LHipYawPitch")
-        self.RHipYawPitch = self.getDevice("RHipYawPitch")
-        self.LKneePitch = self.getDevice("LKneePitch")
-        self.RKneePitch = self.getDevice("RKneePitch")
-        
+
     def setNeutralPositions(self):
         # Set the shoulders to their neutral (resting) position
-        self.RShoulderPitch.setPosition(1)
-        self.LShoulderPitch.setPosition(1)
+        self.RShoulderPitch.setPosition(0)
+        self.LShoulderPitch.setPosition(0)
         self.RElbowRoll.setPosition(0)
         self.LElbowRoll.setPosition(0)
         self.RElbowYaw.setPosition(0)
@@ -86,29 +86,11 @@ class Nao(Robot):
         self.LShoulderRoll.setPosition(0)
         self.RWristYaw.setPosition(0)
         self.LWristYaw.setPosition(0)
-        
-        self.RPhalanx1.setPosition(0)
-        self.RPhalanx2.setPosition(0)
-        self.RPhalanx3.setPosition(0)
-        self.RPhalanx4.setPosition(0)
-        self.RPhalanx5.setPosition(0)
-        self.RPhalanx6.setPosition(0)
-        self.RPhalanx7.setPosition(0)
-        self.RPhalanx8.setPosition(0)
-        self.LPhalanx1.setPosition(0)
-        self.LPhalanx2.setPosition(0)
-        self.LPhalanx3.setPosition(0)
-        self.LPhalanx4.setPosition(0)
-        self.LPhalanx5.setPosition(0)
-        self.LPhalanx6.setPosition(0)
-        self.LPhalanx7.setPosition(0)
-        self.LPhalanx8.setPosition(0)
 
         # Set head to neutral position
         self.HeadYaw.setPosition(0)
         self.HeadPitch.setPosition(0)
-        
-        
+
     def detectPoseGestures(self):
         ret, frame = self.cap.read()
         if not ret:
@@ -122,7 +104,7 @@ class Nao(Robot):
         # Process Pose Landmarks, hand and head
         self.processPoseLandmarks(result_pose)
 
-        # Process Hand Landmarks if detected, сжимать разжимать for fingers
+        # Process Hand Landmarks if detected, сжимать разжимать
         if result_hands.multi_hand_landmarks:
             self.processHandLandmarks(result_hands)
 
@@ -133,12 +115,12 @@ class Nao(Robot):
 
     def processPoseLandmarks(self, result_pose):
         if result_pose.pose_landmarks:
-          
+            # Right shoulder, elbow, and wrist landmarks (for right arm control)
             right_shoulder = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.RIGHT_SHOULDER]
             right_elbow = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.RIGHT_ELBOW]
             right_wrist = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.RIGHT_WRIST]
 
-          
+            # Left shoulder, elbow, and wrist landmarks (for left arm control)
             left_shoulder = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.LEFT_SHOULDER]
             left_elbow = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.LEFT_ELBOW]
             left_wrist = result_pose.pose_landmarks.landmark[self.mp_pose.PoseLandmark.LEFT_WRIST]
@@ -206,6 +188,7 @@ class Nao(Robot):
         shoulder_roll_angle = (shoulder.x - wrist.x) * 3  # Scaling factor
         shoulder_roll.setPosition(max(min(shoulder_roll_angle, shoulder_roll.getMaxPosition()), shoulder_roll.getMinPosition()))
 
+
     def updateFingerPhalanxPositions(self, thumb, pinky, index, is_right_hand):
         thumb_position = 1 if (abs(thumb.x - pinky.x) > 0.1) else 0
         pinky_position = 1 if (abs(thumb.x - pinky.x) > 0.1) else 0
@@ -237,7 +220,7 @@ class Nao(Robot):
             self.LPhalanx8.setPosition(index_position)
 
     def run(self):
-        while self.step(self.timeStep) != -1 :
+        while self.step(self.timeStep) != -1:
             self.detectPoseGestures()  # Continuously check for pose gestures
             key = self.keyboard.getKey()
             if key > 0:
@@ -296,11 +279,11 @@ def callback(recognizer, audio):
             threading.Thread(target=perform_right).start()
             event_counter += 1
         
-        elif "wipe" in text.lower() or "forehead" in text.lower():
+        elif "wipe" in text.lower() or "forehead" in text.lower() or "exhaust" in text.lower():
             threading.Thread(target=perform_wipe).start()
             event_counter += 1
         
-        elif "hey" in text.lower() or "hello" in text.lower() or "wave" in text.lower():
+        elif "hello" in text.lower() or "wave" in text.lower():
             threading.Thread(target=perform_wave).start()
             event_counter += 1
             
@@ -326,7 +309,6 @@ def perform_stop():
 
 def perform_stand():
     stop_event.set()
-    print(stop_event.is_set())
     stand = Motion('../../motions/StandUpFromFront.motion') 
     counter_stand = 0
     while(robot.step(robot.timeStep) != -1 and counter_stand != 110):
@@ -399,9 +381,7 @@ recognizer = sr.Recognizer()
 mic = sr.Microphone()
 
 with mic as source:
-    # print("Adjusting for ambient noise...")
     recognizer.adjust_for_ambient_noise(source)
-    # print("Ambient noise adjustment complete.")
 
 # Start listening for commands asynchronously
 print("Listening for commands... (press Ctrl+C to stop)")
@@ -409,3 +389,4 @@ recognizer.listen_in_background(mic, callback)
 
 while True:
     robot.run()  # Continuously check for pose gestures
+
